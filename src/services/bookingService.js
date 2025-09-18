@@ -55,6 +55,7 @@ export default class BookingService {
 
   /** ---------------- MAKE PAYMENT ---------------- */
   async makePayment(data) {
+   
     const { bookingId, amount, userId } = data;
 
     // 1. Fetch booking first (no transaction yet)
