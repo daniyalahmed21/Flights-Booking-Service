@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import Booking from "../models/booking.js";
 import CrudRepository from "./crudRepository.js";
 
@@ -19,5 +20,15 @@ export default class BookingRepository extends CrudRepository {
       ...(transaction ? { transaction } : {}),
     });
   }
-  
+
+  async cancelOldBookings(timeStamp) {
+    const result = await Booking.findAll({
+      where: {
+        createdAt: {
+          [Op.lt]: timeStamp,
+        },
+      },
+    });
+    return result;
+  }
 }

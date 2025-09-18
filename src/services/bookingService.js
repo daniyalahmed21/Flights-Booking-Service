@@ -150,4 +150,16 @@ export default class BookingService {
       throw error;
     }
   }
+
+  /** ---------------- CANCEL OLD BOOKINGS ---------------- */
+  async cancelOldBookings() {
+    const timeStamp = new Date(Date.now() - 30 * 60 * 1000); // 30 minutes ago
+    const oldBookings = await this.bookingRepository.cancelOldBookings(timeStamp);
+
+    for (const booking of oldBookings) {
+      if (booking.status !== BOOKING_STATUS.BOOKED) {
+        await this.cancelBooking(booking.id);
+      }
+    }
+  }
 }
