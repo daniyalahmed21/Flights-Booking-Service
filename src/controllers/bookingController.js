@@ -10,7 +10,9 @@ export const createBooking = asyncHandler(async (req, res) => {
     userId: req.body.userId,
     flightId: req.body.flightId,
     noOfSeats: req.body.noOfSeats || 1,
-    bookingDate: req.body.bookingDate ? new Date(req.body.bookingDate) : new Date(),
+    bookingDate: req.body.bookingDate
+      ? new Date(req.body.bookingDate)
+      : new Date(),
   });
 
   sendSuccess(
@@ -21,40 +23,15 @@ export const createBooking = asyncHandler(async (req, res) => {
   );
 });
 
-// export const createFlight = asyncHandler(async (req, res) => {
-//   const flight = await flightService.createFlight({
-//     flightNumber: req.body.flightNumber,
-//     airplaneId: req.body.airplaneId,
-//     departureAirportId: req.body.departureAirportId,
-//     arrivalAirportId: req.body.arrivalAirportId,
-//     arrivalDate: new Date(req.body.arrivalDate),
-//     departureTime: new Date(req.body.departureTime),
-//     price: req.body.price,
-//     boardingDate: req.body.boardingDate,
-//     totalSeats: req.body.totalSeats,
-//   });
+export const makePayment = asyncHandler(async (req, res) => {
+  const { bookingId, amount, userId } = req.body;
 
-//   sendSuccess(
-//     res,
-//     flight,
-//     "Successfully created a flight",
-//     StatusCodes.CREATED
-//   );
-// });
+  const paymentResult = await bookingService.makePayment({
+    bookingId,
+    amount,
+    userId,
+  });
 
-// export const getFilteredFlights = asyncHandler(async (req, res) => {
-//   const { trips, minPrice, maxPrice, travellers, travelDate, sortBy, order } =
-//     req.query;
+  sendSuccess(res, paymentResult, "Payment processed successfully");
+});
 
-//   const flights = await flightService.getFilteredFlights({
-//     trips,
-//     minPrice,
-//     maxPrice,
-//     travellers,
-//     travelDate,
-//     sortBy,
-//     order,
-//   });
-
-//   sendSuccess(res, flights, "Successfully fetched filtered flights");
-// });

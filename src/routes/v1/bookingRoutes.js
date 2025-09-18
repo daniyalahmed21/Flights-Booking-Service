@@ -5,5 +5,6 @@ const bookingRouter = Express.Router();
 
 bookingRouter.post("/", BookingController.createBooking);
 // bookingRouter.get("/", BookingController.getAllBookings);
+bookingRouter.post("/payment", BookingController.makePayment);
 
 export default bookingRouter;
