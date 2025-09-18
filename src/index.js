@@ -1,16 +1,15 @@
 import Express from "express";
 import { SERVER_CONFIG } from "./config/serverConfig.js";
-// import apiRouter from "./routes/index.js";
+import apiRouter from "./routes/index.js";
 import Middlewares from "./middlewares/index.js";
-// import { sequelize } from "./config/sequelize.js";
-// import "./models/associations.js";
+import { sequelize } from "./config/sequelize.js";
 
 const app = Express();
 
 app.use(Express.json());
 app.use(Express.urlencoded({ extended: true }));
 
-// app.use("/api", apiRouter);
+app.use("/api", apiRouter);
 
 app.use(Middlewares.errorHandler);
 

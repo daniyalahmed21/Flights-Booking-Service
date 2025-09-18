@@ -1,9 +1,5 @@
-
-import * as FlightController from "./flightController.js";
+import * as BookingController from "./bookingController.js";
 
 export  {
-  AirplaneController,
-  CityController,
-  AirportController,
-  FlightController
+  BookingController
 };

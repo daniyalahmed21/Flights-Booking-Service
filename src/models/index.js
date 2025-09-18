@@ -1,12 +1,19 @@
-'use strict';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { Sequelize } from 'sequelize';
+import process from 'process';
 
-const fs = require('fs');
-const path = require('path');
-const Sequelize = require('sequelize');
-const process = require('process');
-const basename = path.basename(__filename);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.json')[env];
+
+// Read config.json manually
+const configPath = path.join(__dirname, '../config/config.json');
+const configJson = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+const config = configJson[env];
+
 const db = {};
 
 let sequelize;
@@ -16,21 +23,26 @@ if (config.use_env_variable) {
   sequelize = new Sequelize(config.database, config.username, config.password, config);
 }
 
-fs
+// Import models dynamically
+const modelFiles = fs
   .readdirSync(__dirname)
-  .filter(file => {
-    return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
-    );
-  })
-  .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
-    db[model.name] = model;
-  });
+  .filter(file =>
+    file.indexOf('.') !== 0 &&
+    file !== path.basename(__filename) &&
+    file.slice(-3) === '.js' &&
+    !file.includes('.test.js')
+  );
 
+for (const file of modelFiles) {
+  const fileUrl = pathToFileURL(path.join(__dirname, file)).href;
+  const modelModule = await import(fileUrl);
+  const modelClass = modelModule.default;
+  if (!modelClass) continue;
+  const model = modelClass; // Since your models already use Model.init, default export is a class
+  db[model.name] = model;
+}
+
+// Run associations
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
@@ -40,4 +52,4 @@ Object.keys(db).forEach(modelName => {
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
-module.exports = db;
+export default db;
