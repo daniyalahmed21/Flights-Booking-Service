@@ -11,9 +11,10 @@ export default class CrudRepository {
     return await this.model.findAll();
   }
 
-  async create(data) {
-    return await this.model.create(data);
+  async create(data, transaction) {
+    return await this.model.create(data, transaction ? { transaction } : {});
   }
+  
 
   async update(modelId, data) {
     return await this.model.update(data, {

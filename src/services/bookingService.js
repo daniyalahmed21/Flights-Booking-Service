@@ -10,40 +10,37 @@ export default class BookingService {
   }
 
   async createBooking(data) {
+    const transaction = await db.sequelize.transaction();
     try {
-      const booking = await db.sequelize.transaction(async function BookingImp(
-        t
-      ) {
-        const flight = await axios.get(
-          `http://localhost:3000/api/v1/flights/${data.flightId}`
-        );
-        if (data.noOfSeats > flight.data.data.totalSeats) {
-          throw new AppError(
-            "Not enough seats available",
-            StatusCodes.BAD_REQUEST
-          );
-        }
-        const updatedSeats = flight.data.data.totalSeats - data.noOfSeats;
-        await axios.patch(
-          `http://localhost:3000/api/v1/flights/seats/${data.flightId}`,
-          { seats: updatedSeats, dec: true }
-        );
-        console.log("After patch");
-
-        // const booking = await this.bookingRepository.create(data, t);
-
-
-
-        // return booking;
-      });
+      const flight = await axios.get(`http://localhost:3000/api/v1/flights/${data.flightId}`);
+      
+      if (data.noOfSeats > flight.data.data.totalSeats) {
+        throw new AppError("Not enough seats available", StatusCodes.BAD_REQUEST);
+      }
+  
+      const billingAmount = flight.data.data.price * data.noOfSeats;
+  
+      // Create booking inside transaction
+      const booking = await this.bookingRepository.create(
+        { ...data, totalCost: billingAmount },
+        transaction
+      );
+  
+      // Update seats via API
+      await axios.patch(
+        `http://localhost:3000/api/v1/flights/seats/${data.flightId}`,
+        { seats: data.noOfSeats, dec: true }
+      );
+  
+      await transaction.commit();
+      return booking;
     } catch (error) {
+      await transaction.rollback();
       if (error.name === "SequelizeForeignKeyConstraintError") {
-        throw new AppError(
-          "Provided userId or flightId does not exist",
-          StatusCodes.BAD_REQUEST
-        );
+        throw new AppError("Provided userId or flightId does not exist", StatusCodes.BAD_REQUEST);
       }
       throw error;
     }
   }
+  
 }
