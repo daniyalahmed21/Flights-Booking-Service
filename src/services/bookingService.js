@@ -10,6 +10,7 @@ export default class BookingService {
     this.bookingRepository = new Repositories.BookingRepository();
   }
 
+  /** ---------------- CREATE BOOKING ---------------- */
   async createBooking(data) {
     const transaction = await db.sequelize.transaction();
     try {
@@ -52,48 +53,101 @@ export default class BookingService {
     }
   }
 
+  /** ---------------- MAKE PAYMENT ---------------- */
   async makePayment(data) {
+    const { bookingId, amount, userId } = data;
+
+    // 1. Fetch booking first (no transaction yet)
+    const booking = await this.bookingRepository.get(bookingId);
+    if (!booking) {
+      throw new AppError("Booking not found", StatusCodes.NOT_FOUND);
+    }
+
+    // 2. Check expiry before starting transaction
+    const currentTime = new Date();
+    const bookingTime = new Date(booking.createdAt);
+    const timeDifference = (currentTime - bookingTime) / (1000 * 60); // minutes
+    if (timeDifference > 30) {
+      // cancelBooking has its own transaction
+      await this.cancelBooking(bookingId);
+      throw new AppError("Booking has expired", StatusCodes.BAD_REQUEST);
+    }
+
+    // 3. Other checks before starting transaction
+    if (booking.userId !== userId) {
+      throw new AppError(
+        "Unauthorized payment attempt",
+        StatusCodes.UNAUTHORIZED
+      );
+    }
+
+    if (booking.status === BOOKING_STATUS.BOOKED) {
+      throw new AppError(
+        "Booking is already completed",
+        StatusCodes.BAD_REQUEST
+      );
+    }
+
+    if (amount < booking.totalCost) {
+      throw new AppError(
+        "Insufficient payment amount",
+        StatusCodes.BAD_REQUEST
+      );
+    }
+
+    // 4. Now open transaction to update status
     const transaction = await db.sequelize.transaction();
     try {
-      const { bookingId, amount, userId } = data;
-  
+      await this.bookingRepository.update(
+        bookingId,
+        { status: BOOKING_STATUS.BOOKED },
+        transaction
+      );
+
+      await transaction.commit();
+
+      return {
+        status: "success",
+        bookingId,
+        message: "Payment completed successfully",
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  /** ---------------- CANCEL BOOKING ---------------- */
+  async cancelBooking(bookingId) {
+    const transaction = await db.sequelize.transaction();
+    try {
       const booking = await this.bookingRepository.get(bookingId, transaction);
       if (!booking) {
         throw new AppError("Booking not found", StatusCodes.NOT_FOUND);
       }
-  
-      if (booking.userId !== userId) {
-        throw new AppError("Unauthorized payment attempt", StatusCodes.UNAUTHORIZED);
+
+      if (booking.status === BOOKING_STATUS.CANCELLED) {
+        await transaction.commit();
+        return;
       }
-  
-      if (booking.status === BOOKING_STATUS.BOOKED) {
-        throw new AppError("Booking is already completed", StatusCodes.BAD_REQUEST);
-      }
-  
-      if (amount < booking.totalCost) {
-        throw new AppError("Insufficient payment amount", StatusCodes.BAD_REQUEST);
-      }
-  
-      // update booking status
+
+      // give seats back to flight
+      await axios.patch(
+        `http://localhost:3000/api/v1/flights/seats/${booking.flightId}`,
+        { seats: booking.noOfSeats, dec: false }
+      );
+
+      // update status
       await this.bookingRepository.update(
         bookingId,
-        { status: BOOKING_STATUS.BOOKED },
-        transaction // pass transaction only
+        { status: BOOKING_STATUS.CANCELLED },
+        transaction
       );
-  
+
       await transaction.commit();
-  
-      // ✅ use only defined variables
-      return {
-        status: "success",
-        bookingId,
-        message: "Payment completed successfully"
-      };
     } catch (error) {
       await transaction.rollback();
-      console.error("Payment error:", error);
       throw error;
     }
   }
-  
 }
