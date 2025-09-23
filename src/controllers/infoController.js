@@ -4,7 +4,7 @@ export const info = (req, res) => {
   res.status(StatusCodes.OK).json({
     status: "success",
     data: {},
-    message: {},
+    message: "API is working",
     error: {},
   });
 };
