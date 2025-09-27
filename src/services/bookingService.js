@@ -4,6 +4,7 @@ import Repositories from "../repositories/index.js";
 import db from "../models/index.js";
 import axios from "axios";
 import { BOOKING_STATUS } from "../utils/enum.js";
+import { sendToQueue } from "../config/queueConfig.js";
 
 export default class BookingService {
   constructor() {
@@ -105,8 +106,13 @@ export default class BookingService {
         transaction
       );
 
+      sendToQueue({
+        text: `Payment completed successfully for booking ID: ${bookingId}`,
+        subject: "Payment Successful",
+        recipientEmail: "daniyalahmedd25@gmail.com"
+      });
       await transaction.commit();
-
+      
       return {
         status: "success",
         bookingId,
